@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+
+"""
+MVP:
+    Recipe cards are viewable on a device
+    Recipe cards are selectable on a device
+    OCR recipe cards to store in a document-driven data store
+    Accept dynamic input from a list of recipe cards (documents)
+    - Create a latex document given dynamic input
+    - Generate a pdf with latex
+    - Send a pdf to a printer with settings (cups?)
+    - Printed list on a 4x5 sheet
+
+For really being able to use it
+    Rejects "to taste" ingredients before printing
+    - OCR / GPT pipeline that can take a list of photos and convert it to recipemd files
+
+For sharing with others:
+    Move the ./recipes outside of this repo so that you can publish it to github
+    Get the printer from lpstat -p and dynamically fill it
+
+For collaborating
+    figure out configuring sphinx to use the comments in this code
+"""
+
+from jinja2 import Environment, FileSystemLoader
+import json
+import subprocess
+import re
+import os
+import argparse
+import logging
+
+CLEAN_INGREDIENT_PTN = r"^(to taste|[\d]+(?:\.\d+)?( diced| oz| cups?| cloves?| grams?| teaspoons?| pinches?)?)\s*"
+
+def main():
+    """
+     Getting Started
+    ---------------
+
+    .. code-block:: bash
+
+        pip3 install jinja2
+        pip3 install recipemd
+        pip3 install sphinx
+
+
+     Maintenance
+    ---------------
+
+    Generate the docs with the following.
+
+    .. code-block:: bash
+
+        make html
+
+
+    Helpful Notes
+    -------------
+
+    - Edit ``./files/template.tex`` if you need to adjust the template
+    """
+    parser = argparse.ArgumentParser(description="Print a PDF file to a LAN printer.")
+    parser.add_argument("--dry-run", action="store_true", help="Simulate the print job without sending it to the printer")
+    args = parser.parse_args()
+
+    logger = setup_logger()
+
+    logger.info("Starting program...")
+    pdf_filepath = os.path.join(".", "files", "list.pdf")
+    printer_name = get_printer_name(logger=logger)
+    if printer_name is None:
+        logger.info("Exiting early since printer not found")
+
+    precleaning(pdf_filepath, logger=logger) # Cleans up dirty files as a sanity check
+
+
+    meal_fps = [
+        os.path.join(".", "recipes", "bean_stuff.md"),
+        os.path.join(".", "recipes", "guacamole.md"),
+    ]
+    (meals, items) = select_meals(meal_fps)
+    logger.info(f"Using meals: {json.dumps(meals)}")
+    logger.info(f"Produced ingredient-deck: {json.dumps(items)}")
+
+    # TODO: Re-enable
+    # create_latex_document(meals, items, logger=logger)
+    # generate_latex_file(logger=logger)
+    # print_pdf(pdf_filepath, printer_name, dry_run=args.dry_run, logger=logger)
+    logger.info("Exiting program...\n\n")
+
+def select_meals(meal_fps, logger=None):
+    """
+    meal_fps: A collection of `os.path.join(".", "recipes", ".......")`
+    """
+
+    meal_names = []
+    for meal_fp in meal_fps:
+        meal_name = subprocess.run(
+            ["recipemd", meal_fp, "-t"],
+            capture_output=True,
+            text=True
+        ).stdout
+
+
+        meal_names.append(meal_name.replace("\n", ""))
+
+
+    REJECT_LIST = [""] # Reject non-ingredient words
+    ingredients = []
+
+    for meal_fp in meal_fps:
+        meal_ingredients = subprocess.run(
+            ["recipemd", meal_fp, "-i"],
+            capture_output=True,
+            text=True
+        ).stdout
+
+        for mi in meal_ingredients.split("\n"):
+            if re.search(r"^to taste", mi) is not None:
+                # Don't print out common ingredients like salt pepper, etc.
+                # Can make this configurable in the future if we want.
+                continue
+
+            if mi in REJECT_LIST:
+                continue
+
+            cleaned_ingredient = re.sub(CLEAN_INGREDIENT_PTN, "", mi).strip()
+            ingredients.append(cleaned_ingredient)
+
+    sorted_unique_ingredients = sorted(set(ingredients))
+    return (meal_names, sorted_unique_ingredients)
+
+
+def create_latex_document(meals, items, logger=None):
+    logger.info("Creating generated-list.tex using template.tex")
+    env = Environment(loader=FileSystemLoader('.'))
+    template = env.get_template(os.path.join(".", "files", "template.tex"))
+    data = { 'items': items, 'meals': meals }
+    filled_template = template.render(data)
+
+    with open(os.path.join(".", "files", "generated-list.tex"), "w") as f:
+        f.write(filled_template)
+
+def generate_latex_file(logger=None):
+    logger.info("Generating latex file")
+    file_path = os.path.join(".", "files", "generated-list.tex")
+    file_dir = os.path.join(".", "files")
+    subprocess.run(["pdflatex", f"-output-directory={file_dir}", file_path], check=True)
+
+def print_pdf(file_path, printer_name, dry_run=False, logger=None):
+    if dry_run:
+        logger.info("Dry-running the print job")
+        return
+
+    try:
+        # Adjust paper size and other settings as needed
+        subprocess.run([
+            "lp",
+            "-d", printer_name,          # Specify the printer by its name
+            "-o", "media=Custom.4x5in",  # Set custom paper size
+            "-o", "fit-to-page",         # Fit content to the page (optional)
+            "-o", "print-quality=5",         # High print quality (5 is generally highest)
+            "-o", "ColorModel=Gray",         # Monochrome (grayscale)
+            "-o", "print-color-mode=monochrome",  # Force monochrome mode (redundant, but ensures grayscale)
+            "-o", "cpi=12",                  # Characters per inch (CPI), optimized for text readability
+            "-o", "resolution=150dpi",        # Lower DPI for faster print (try 72dpi if available)
+            file_path                    # Path to the PDF file
+        ], check=True)
+        logger.info("Print job sent successfully.")
+    except subprocess.CalledProcessError as e:
+        logger.exception("Error sending print job")
+
+
+def setup_logger():
+    # Create a custom logger
+    logger = logging.getLogger("PrintLogger")
+    logger.setLevel(logging.INFO)
+
+    # Create handlers
+    file_path = os.path.join(".", "files", "print_job.log")
+    file_handler = logging.FileHandler(file_path)
+    console_handler = logging.StreamHandler()
+
+    # Set logging level for each handler
+    file_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.INFO)
+
+    # Define log message format
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+
+    # Add handlers to the logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+
+    return logger
+
+
+def get_printer_name(logger=None):
+        # printer {{name}} is idle.  enabled since {{datetime}}
+        lpstat_output = subprocess.run(
+            ["lpstat", "-p"],
+            capture_output=True,
+            text=True
+        ).stdout
+
+        pattern = r"printer (\S+)"
+        match = re.search(pattern, lpstat_output)
+
+        if match:
+            printer_name = match.group(1)
+            logger.info(f"Will send print to {printer_name}")
+            return printer_name
+        else:
+            logger.error("No printer found.")
+            return None
+
+
+def precleaning(pdf_filepath, logger=None):
+    logger.info(f"Removing {pdf_filepath}")
+    try:
+        os.remove(pdf_filepath)
+    except FileNotFoundError:
+        pass
+
+
+if __name__ == "__main__":
+    main()
+

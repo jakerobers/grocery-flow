@@ -1,0 +1,39 @@
+\documentclass[8pt]{article}
+\usepackage[paperwidth=4in, paperheight=5in, margin=0.2in]{geometry}
+\usepackage{multicol}
+\usepackage{setspace} % Allows custom line spacing
+\pdfpagewidth=4in % Set PDF metadata for page width
+\pdfpageheight=5in % Set PDF metadata for page height
+\pagestyle{empty}
+\renewcommand{\familydefault}{\ttdefault} % Use monospaced font
+
+\begin{document}
+
+\begin{spacing}{0.1} % Slightly reduce line height
+
+\begin{multicols}{2} % Begin two columns
+
+% Meals Section
+\noindent\textbf{Meals} % Header for Meals
+\begin{itemize}
+    \setlength\itemsep{0pt} % Reduce spacing between items
+    {% for meal in meals %}
+        \item {{ meal }}
+    {% endfor %}
+\end{itemize}
+
+% Shopping List Section
+\vspace{0.1in} % Optional spacing between sections
+\noindent\textbf{Shopping List} % Header for Shopping List
+\begin{itemize}
+    \setlength\itemsep{0pt} % Reduce spacing between items
+    {% for item in items %}
+        \item {{ item }}
+    {% endfor %}
+\end{itemize}
+
+\end{multicols}
+
+\end{spacing}
+
+\end{document}

@@ -1,0 +1,4 @@
+_build
+__pycache__/main.cpython-313.pyc
+files/generated-*
+files/print_job.log

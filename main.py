@@ -3,15 +3,18 @@
 """
 User feedback
     I'd like to provide my own master list of item ordering so that the list order matches the order that I get stuff at the store
-    Need more recipes - OCR recipe cards and convert to recipemd (use ./bin/to_recipemd)
 
 For sharing with others:
-    Add an installer that adds a desktop icon for easy execution
+    How do we package this up as a one-click install app. Would like desktop icon for easy execution.
     Move the ./recipes outside of this repo so that you can publish it to github and let others add their own recipes
     Eventually we can make a static site generator to make these publicly accessible
 
 For collaborating
     figure out configuring sphinx to use the comments in this code
+
+Things that will naturally arise as needs
+    split this out into an app directory
+    add unit tests
 """
 
 import json

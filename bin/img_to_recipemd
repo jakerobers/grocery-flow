@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+
+"""
+Converts a photo of a recipe card to recipemd. Outputs results to stdout.
+
+Usage with `cat`
+
+```
+cat <<EOF | ./bin/img_to_recipemd > ./recipes/shrimp_curried_pasta.md
+... your unstructured text here.
+EOF
+```
+"""
+
+from openai import OpenAI
+import os
+import sys
+
+
+def main():
+    ocr_input = sys.stdin.read()
+    recipemd_contents = produce_recipemd_file(ocr_input)
+    print(recipemd_contents)
+
+def produce_recipemd_file(ocr_input):
+    SYSTEM_PROMPT = """You are an expert in converting unstructured text into the recipemd format.
+The unstructured text will most commonly take the form of raw content produced by tesseract OCR.
+This OCR content had been produced either from scanning physical recipe cards or roughly copy/pasted content from a website.
+
+[Guidelines]
+* Please adhere strictly to recipemd format. The output should be a fully compliant markdown file.
+* The EXAMPLE FORMAT section is an example for the format/structure that you must follow to produce output.
+* The output that you produce should only come from the user input. Don't reference the EXAMPLE FORMAT for specific ingredients or directions.
+* In the ingredient section, the asteriks should only enclose the quantity and unit of measurement. Never put the food in the asteriks in this section.
+
+[EXAMPLE FORMAT]
+
+```
+# Bean Stuff
+
+A great vegetarian staple commonly consumed in most regions of the world.
+
+*tag1, tag2, tag3*
+
+**4 Servings, 200g**
+
+---
+
+- *3* bell peppers
+- *1* onion
+- *3* garlic cloves
+- *2 diced* jalepenos
+- *8 oz* black beans
+- *3 cups* rice
+- *to taste* red pepper flakes
+- *to taste* salt
+- *to taste* pepper
+
+---
+
+Stir-fry the bell peppers, onion, garlic and jalepenos.
+
+Stir in the black beans and rice
+
+Add your preferred seasonings to taste. I like salt, pepper, and red pepper flakes
+```
+"""
+
+    client = OpenAI(
+        organization=os.getenv('OPENAI_ORGANIZATION'),
+        project=os.getenv('OPENAI_PROJECT'),
+    )
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": ocr_input}
+        ]
+    )
+
+    recipemd_contents = completion.choices[0].message.content
+    return recipemd_contents
+
+
+if __name__ == "__main__":
+    main()

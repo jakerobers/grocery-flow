@@ -264,6 +264,7 @@ if __name__ == "__main__":
         pip3 install jinja2
         pip3 install recipemd
         pip3 install sphinx
+        pip3 install openai
 
 
      Maintenance

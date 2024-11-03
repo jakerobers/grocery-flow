@@ -1,22 +1,13 @@
 #!/usr/bin/env python3
 
 """
-MVP:
-    - Recipe cards are viewable on a device
-    - Recipe cards are selectable on a device
-    - Accept dynamic input from a list of recipe cards (documents)
-    - Create a latex document given dynamic input
-    - Generate a pdf with latex
-    - Send a pdf to a printer with settings (cups?)
-    - Printed list on a 4x5 sheet
-
 For really being able to use it
     OCR recipe cards to store in a document-driven data store
-    - OCR / GPT pipeline that can take a list of photos and convert it to recipemd files
+    OCR / GPT pipeline that can take a list of photos and convert it to recipemd files
 
 For sharing with others:
-    Move the ./recipes outside of this repo so that you can publish it to github
-    Get the printer from lpstat -p and dynamically fill it
+    Add an installer that adds a desktop icon for easy execution
+    Move the ./recipes outside of this repo so that you can publish it to github and let others add their own recipes
 
 For collaborating
     figure out configuring sphinx to use the comments in this code

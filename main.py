@@ -89,19 +89,6 @@ class RecipeSelectorGUI:
         submit_button = tk.Button(master, text="Submit", command=self.submit_selection)
         submit_button.pack(pady=10)
 
-         # Logging Pane on the right
-        self.log_frame = tk.Frame(master)
-        self.log_frame.pack(fill="both", expand=True, padx=10, pady=(10, 0))
-
-        log_label = tk.Label(self.log_frame, text="Logs", font=("Helvetica", 12))
-        log_label.pack(pady=5)
-
-        self.log_text = tk.Text(self.log_frame, wrap="word", state="disabled", width=30, height=20)
-        self.log_text.pack(fill="both", expand=True)
-
-        # Set up logger
-        text_handler = TextHandler(self.log_text)
-        self.logger.addHandler(text_handler)
 
     def _on_mouse_wheel(self, event):
         if event.num == 5 or event.delta == -120:
@@ -145,19 +132,6 @@ class RecipeSelectorGUI:
         else:
             messagebox.showinfo("No Selection", "No recipes selected.")
 
-class TextHandler(logging.Handler):
-    """Custom logging handler that outputs log messages to a Tkinter Text widget."""
-    def __init__(self, text_widget):
-        super().__init__()
-        self.text_widget = text_widget
-
-    def emit(self, record):
-        log_entry = self.format(record)
-        self.text_widget.configure(state="normal")
-        self.text_widget.insert(tk.END, log_entry + "\n")
-        self.text_widget.configure(state="disabled")
-        self.text_widget.yview(tk.END)  # Scroll to the end of the text widget
-
 
 class ProcessSelection:
     def __init__(self, conf, printer_name):
@@ -173,7 +147,7 @@ class ProcessSelection:
         self._create_latex_document(meal_idx, items, logger=logger)
         self._generate_latex_file(logger=logger)
         self._print_pdf(output_filename, self.printer_name, dry_run=self.conf.dry_run, logger=logger)
-        logger.info("Exiting program...\n\n")
+        logger.info("Sent to printer...")
 
 
     def _select_meals(self, meal_fps, logger=None):
@@ -272,7 +246,7 @@ class ProcessSelection:
         logger.info("Generating latex file")
         file_path = os.path.join(".", "files", "generated-list.tex")
         file_dir = os.path.join(".", "files")
-        subprocess.run(["pdflatex", f"-output-directory={file_dir}", file_path], check=True)
+        subprocess.run(["pdflatex", f"-output-directory={file_dir}", file_path], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def _print_pdf(self, file_path, printer_name, dry_run=False, logger=None):
         return

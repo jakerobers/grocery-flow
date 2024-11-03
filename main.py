@@ -25,7 +25,7 @@ import tkinter as tk
 from tkinter import messagebox
 from jinja2 import Environment, FileSystemLoader
 
-CLEAN_INGREDIENT_PTN = r"^(to taste|[\d]+(?:\.\d+)?(?:\s(?:diced|oz|cups?|cloves?|grams?|teaspoons?|pinches?|packages?|tablespoons?|sliced|grated|ground|melted|ounces|lb|minced|tbsp|tsp|bunch|chopped|halved|scoop|juiced|pounds|stalk|pinch))*)\s*"
+CLEAN_INGREDIENT_PTN = r"^(to taste|to serve|[\d]+(?:\.\d+)?(?:\s(?:diced|oz|cups?|cloves?|grams?|teaspoons?|pinches?|packages?|tablespoons?|sliced|grated|ground|melted|ounces|lb|minced|tbsp|tsp|bunch|chopped|halved|scoop|juiced|pounds|stalks?|pinch|cans?|squeezed))*)\s*"
 
 # TODO: make this configurable from the UI
 PINNED_RECIPES = [

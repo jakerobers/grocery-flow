@@ -1,4 +1,3 @@
-```
 # Oriental Salad
 
 A crunchy and flavorful salad that combines unique textures and tastes.
@@ -10,10 +9,10 @@ A crunchy and flavorful salad that combines unique textures and tastes.
 ---
 
 - *4 tablespoons* melted butter
-- *2 packages* of Ramen (chicken flavor)
+- *2 packages* Ramen (chicken flavor)
 - *1/2 cup* sliced almonds
 - *4 1/2 tablespoons* sunflower seeds
-- *1 package (16 oz)* coleslaw cabbage
+- *16 oz* coleslaw cabbage
 - *6* green onions
 
 ---
@@ -40,4 +39,3 @@ Mix together the salad dressing ingredients. Microwave for 1 minute and let cool
 30 minutes before serving, pour the dressing onto the cabbage and onion mixture. Refrigerate.
 
 Just before serving, mix in the dry ingredients to keep the noodles crunchy.
-```

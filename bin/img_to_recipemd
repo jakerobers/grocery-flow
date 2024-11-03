@@ -32,6 +32,7 @@ This OCR content had been produced either from scanning physical recipe cards or
 * The EXAMPLE FORMAT section is an example for the format/structure that you must follow to produce output.
 * The output that you produce should only come from the user input. Don't reference the EXAMPLE FORMAT for specific ingredients or directions.
 * In the ingredient section, the asteriks should only enclose the quantity and unit of measurement. Never put the food in the asteriks in this section.
+* Do not enclose your output in ```, just spit out the markdown directly
 
 [EXAMPLE FORMAT]
 

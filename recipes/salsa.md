@@ -1,4 +1,3 @@
-```
 # Salsa
 
 A fresh and spicy dip perfect for chips or as a topping for your favorite dishes.
@@ -9,9 +8,9 @@ A fresh and spicy dip perfect for chips or as a topping for your favorite dishes
 
 ---
 
-- *12* roma tomatoes
-- *9-10* serranos
-- *1-2* large yellow onions
+- *12* roma tomato
+- *7* serrano
+- *2* yellow onion
 - *8 cloves* garlic
 - *1 bunch* cilantro
 - *1* lime
@@ -26,4 +25,3 @@ Blend with cilantro.
 Add lime juice.
 
 Salt to taste.
-```

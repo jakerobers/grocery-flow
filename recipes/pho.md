@@ -1,4 +1,3 @@
-```
 # Pho
 
 A delicious Vietnamese noodle soup that combines fragrant broth with tender steak and fresh toppings.
@@ -9,28 +8,25 @@ A delicious Vietnamese noodle soup that combines fragrant broth with tender stea
 
 ---
 
-- *3 tbsp* olive oil, divided
-- *1* shallot or small onion, diced
+- *3 tbsp* olive oil
+- *1 diced* onion
 - *1 clove* garlic, minced
-- *1 inch* piece of ginger, minced
+- *1 minced* ginger
 - *4 cups* beef broth
 - *1 cup* water
-- *1* thin striploin steak
-- *1 tbsp* red curry paste, divided in half
+- *1* striploin steak
+- *1 tbsp* red curry paste
 - *1 tsp* lemon juice
-- *1 tsp* lime juice
+- *1 juiced* lime
 - *2 tbsp* soy sauce
 - *1/2 tsp* fish sauce
 - *1 tbsp* chili paste
 - *to taste* salt
 - *to taste* pepper
 - *1/2 package* rice noodles
-
-**Toppings**
-- *1 handful* cilantro, chopped
-- *3* green onions, chopped
+- *1 bunch* cilantro
+- *3 chopped* green onions
 - *1 handful* bean sprouts
-- *1* lime, cut into wedges
 
 ---
 
@@ -42,5 +38,4 @@ After preparing garnishes and placing them in small bowls so guests can self-ser
 
 Bring soup back to a boil and add rice noodles, cooking for 3-5 minutes. If possible, remove noodles from the broth to prevent them from soaking it all up.
 
-Serve pho in large bowls with noodles, broth, and steak, garnishing with chopped vegetables as desired.
-```
+Serve pho in large bowls with noodles, broth, and steak, garnishing with chopped cilantro and bean sprouts as desired. Cut additional limes as garnish as well.

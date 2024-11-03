@@ -24,12 +24,16 @@ import tkinter as tk
 from tkinter import messagebox
 from jinja2 import Environment, FileSystemLoader
 
-CLEAN_INGREDIENT_PTN = r"^(to taste|[\d]+(?:\.\d+)?( diced| oz| cups?| cloves?| grams?| teaspoons?| pinches?)?)\s*"
+# CLEAN_INGREDIENT_PTN = r"^(to taste|[\d]+(?:\.\d+)?(diced| oz| cups?| cloves?| grams?| teaspoons?| pinches?| packages?| tablespoons?|sliced|ground|melted|ounces)?(| grated)?)\s*"
+
+CLEAN_INGREDIENT_PTN = r"^(to taste|[\d]+(?:\.\d+)?(?:\s(?:diced|oz|cups?|cloves?|grams?|teaspoons?|pinches?|packages?|tablespoons?|sliced|grated|ground|melted|ounces|lb|minced|tbsp|tsp|bunch|chopped|halved|scoop|juiced|pounds|stalk|pinch))*)\s*"
+
 
 
 class RecipeSelectorGUI:
-    def __init__(self, master, recipe_dir="./recipes", printer_name=None, output_filename=None, conf=None):
+    def __init__(self, master, recipe_dir="./recipes", printer_name=None, output_filename=None, conf=None, logger=None):
         self.master = master
+        self.logger=logger
         self.recipe_dir = recipe_dir
         self.printer_name=printer_name
         self.output_filename = output_filename
@@ -38,7 +42,7 @@ class RecipeSelectorGUI:
 
         # Set up the window
         master.title("Recipe Selector")
-        master.geometry("360x600")
+        master.geometry("600x600")
 
         # Title Label
         title_label = tk.Label(master, text="Select Recipes", font=("Helvetica", 16))
@@ -67,7 +71,7 @@ class RecipeSelectorGUI:
         self.recipe_vars = []
         for recipe in self.get_recipes():
             var = tk.BooleanVar()
-            checkbox = tk.Checkbutton(self.scrollable_frame, text=recipe, variable=var)
+            checkbox = tk.Checkbutton(self.scrollable_frame, text=recipe[1], variable=var)
             checkbox.pack(anchor="w", padx=10, pady=2)
             self.recipe_vars.append((var, recipe))
 
@@ -75,13 +79,39 @@ class RecipeSelectorGUI:
         submit_button = tk.Button(master, text="Submit", command=self.submit_selection)
         submit_button.pack(pady=10)
 
+         # Logging Pane on the right
+        self.log_frame = tk.Frame(master)
+        self.log_frame.pack(fill="both", expand=True, padx=10, pady=(10, 0))
+
+        log_label = tk.Label(self.log_frame, text="Logs", font=("Helvetica", 12))
+        log_label.pack(pady=5)
+
+        self.log_text = tk.Text(self.log_frame, wrap="word", state="disabled", width=30, height=20)
+        self.log_text.pack(fill="both", expand=True)
+
+        # Set up logger
+        text_handler = TextHandler(self.log_text)
+        self.logger.addHandler(text_handler)
+
     def get_recipes(self):
         """Retrieve a list of RecipeMD files from the recipes directory."""
-        return [f for f in os.listdir(self.recipe_dir) if f.endswith(".md")]
+        meal_files = [f for f in os.listdir(self.recipe_dir) if f.endswith(".md")]
+        meal_names = []
+        for meal_file in meal_files:
+            meal_fp = os.path.join(".", "recipes", meal_file)
+            meal_name = subprocess.run(
+                ["recipemd", meal_fp, "-t"],
+                capture_output=True,
+                text=True
+            ).stdout
+            meal_names.append((meal_file, meal_name.strip()))
+
+        return meal_names
+
 
     def submit_selection(self):
         """Collect and show the selected recipes."""
-        self.selected_recipes = [recipe for var, recipe in self.recipe_vars if var.get()]
+        self.selected_recipes = [recipe[0] for var, recipe in self.recipe_vars if var.get()]
         ProcessSelection(self.conf, self.printer_name).execute(self.selected_recipes, self.output_filename)
 
         # Show the selected recipes in a messagebox
@@ -89,6 +119,19 @@ class RecipeSelectorGUI:
             messagebox.showinfo("Selected Recipes", "Selected recipes:\n" + "\n".join(self.selected_recipes))
         else:
             messagebox.showinfo("No Selection", "No recipes selected.")
+
+class TextHandler(logging.Handler):
+    """Custom logging handler that outputs log messages to a Tkinter Text widget."""
+    def __init__(self, text_widget):
+        super().__init__()
+        self.text_widget = text_widget
+
+    def emit(self, record):
+        log_entry = self.format(record)
+        self.text_widget.configure(state="normal")
+        self.text_widget.insert(tk.END, log_entry + "\n")
+        self.text_widget.configure(state="disabled")
+        self.text_widget.yview(tk.END)  # Scroll to the end of the text widget
 
 
 class ProcessSelection:
@@ -125,7 +168,6 @@ class ProcessSelection:
             meal_names.append(meal_name.replace("\n", ""))
 
 
-        REJECT_LIST = [""] # Reject non-ingredient words
         ingredients = []
 
         for meal_fp in meal_fps:
@@ -141,7 +183,7 @@ class ProcessSelection:
                     # Can make this configurable in the future if we want.
                     continue
 
-                if mi in REJECT_LIST:
+                if self._in_reject_list(mi):
                     continue
 
                 cleaned_ingredient = re.sub(CLEAN_INGREDIENT_PTN, "", mi).strip()
@@ -149,6 +191,17 @@ class ProcessSelection:
 
         sorted_unique_ingredients = sorted(set(ingredients))
         return (meal_names, sorted_unique_ingredients)
+
+    def _in_reject_list(self, ingredient):
+        REJECT_LIST = [r".*water.*"] # Things to omit from a shopping list
+        if ingredient.strip() == "":
+            return True
+
+        for r in REJECT_LIST:
+            if re.search(r, ingredient) is not None:
+                return True
+
+        return False
 
 
     def _create_latex_document(self, meals, items, logger=None):
@@ -294,9 +347,9 @@ if __name__ == "__main__":
     if printer_name is None:
         logger.info("Exiting early since printer not found")
 
-    pdf_filepath = os.path.join(".", "files", "list.pdf")
+    pdf_filepath = os.path.join(".", "files", "generated-list.pdf")
     precleaning(pdf_filepath, logger=logger) # Cleans up dirty files as a sanity check
 
     root = tk.Tk()
-    app = RecipeSelectorGUI(root, printer_name=printer_name, output_filename=pdf_filepath, conf=args)
+    app = RecipeSelectorGUI(root, printer_name=printer_name, output_filename=pdf_filepath, conf=args, logger=logger)
     root.mainloop()

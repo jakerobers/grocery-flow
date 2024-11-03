@@ -2,6 +2,7 @@
 
 """
 User feedback
+    I'd like to provide my own master list of item ordering so that the list order matches the order that I get stuff at the store
     Need more recipes - OCR recipe cards and convert to recipemd (use ./bin/to_recipemd)
 
 For sharing with others:
@@ -23,8 +24,6 @@ import logging
 import tkinter as tk
 from tkinter import messagebox
 from jinja2 import Environment, FileSystemLoader
-
-# CLEAN_INGREDIENT_PTN = r"^(to taste|[\d]+(?:\.\d+)?(diced| oz| cups?| cloves?| grams?| teaspoons?| pinches?| packages?| tablespoons?|sliced|ground|melted|ounces)?(| grated)?)\s*"
 
 CLEAN_INGREDIENT_PTN = r"^(to taste|[\d]+(?:\.\d+)?(?:\s(?:diced|oz|cups?|cloves?|grams?|teaspoons?|pinches?|packages?|tablespoons?|sliced|grated|ground|melted|ounces|lb|minced|tbsp|tsp|bunch|chopped|halved|scoop|juiced|pounds|stalk|pinch))*)\s*"
 

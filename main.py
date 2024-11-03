@@ -2,17 +2,16 @@
 
 """
 MVP:
-    Recipe cards are viewable on a device
-    Recipe cards are selectable on a device
-    OCR recipe cards to store in a document-driven data store
-    Accept dynamic input from a list of recipe cards (documents)
+    - Recipe cards are viewable on a device
+    - Recipe cards are selectable on a device
+    - Accept dynamic input from a list of recipe cards (documents)
     - Create a latex document given dynamic input
     - Generate a pdf with latex
     - Send a pdf to a printer with settings (cups?)
     - Printed list on a 4x5 sheet
 
 For really being able to use it
-    Rejects "to taste" ingredients before printing
+    OCR recipe cards to store in a document-driven data store
     - OCR / GPT pipeline that can take a list of photos and convert it to recipemd files
 
 For sharing with others:
@@ -23,7 +22,6 @@ For collaborating
     figure out configuring sphinx to use the comments in this code
 """
 
-from jinja2 import Environment, FileSystemLoader
 import json
 import subprocess
 import re
@@ -31,145 +29,175 @@ import os
 import argparse
 import logging
 
+import tkinter as tk
+from tkinter import messagebox
+from jinja2 import Environment, FileSystemLoader
+
 CLEAN_INGREDIENT_PTN = r"^(to taste|[\d]+(?:\.\d+)?( diced| oz| cups?| cloves?| grams?| teaspoons?| pinches?)?)\s*"
 
-def main():
-    """
-     Getting Started
-    ---------------
 
-    .. code-block:: bash
+class RecipeSelectorGUI:
+    def __init__(self, master, recipe_dir="./recipes", printer_name=None, output_filename=None, conf=None):
+        self.master = master
+        self.recipe_dir = recipe_dir
+        self.printer_name=printer_name
+        self.output_filename = output_filename
+        self.conf = conf
+        self.selected_recipes = []
 
-        pip3 install jinja2
-        pip3 install recipemd
-        pip3 install sphinx
+        # Set up the window
+        master.title("Recipe Selector")
+        master.geometry("360x600")
 
+        # Title Label
+        title_label = tk.Label(master, text="Select Recipes", font=("Helvetica", 16))
+        title_label.pack(pady=10)
 
-     Maintenance
-    ---------------
+        # Scrollable Frame for Checkboxes
+        self.checkbox_frame = tk.Frame(master)
+        self.checkbox_frame.pack(fill="both", expand=True, padx=10)
 
-    Generate the docs with the following.
+        self.canvas = tk.Canvas(self.checkbox_frame)
+        self.scrollbar = tk.Scrollbar(self.checkbox_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas)
 
-    .. code-block:: bash
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
 
-        make html
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
 
-    Helpful Notes
-    -------------
+        # Add checkboxes for each recipe
+        self.recipe_vars = []
+        for recipe in self.get_recipes():
+            var = tk.BooleanVar()
+            checkbox = tk.Checkbutton(self.scrollable_frame, text=recipe, variable=var)
+            checkbox.pack(anchor="w", padx=10, pady=2)
+            self.recipe_vars.append((var, recipe))
 
-    - Edit ``./files/template.tex`` if you need to adjust the template
-    """
-    parser = argparse.ArgumentParser(description="Print a PDF file to a LAN printer.")
-    parser.add_argument("--dry-run", action="store_true", help="Simulate the print job without sending it to the printer")
-    args = parser.parse_args()
+        # Submit Button
+        submit_button = tk.Button(master, text="Submit", command=self.submit_selection)
+        submit_button.pack(pady=10)
 
-    logger = setup_logger()
+    def get_recipes(self):
+        """Retrieve a list of RecipeMD files from the recipes directory."""
+        return [f for f in os.listdir(self.recipe_dir) if f.endswith(".md")]
 
-    logger.info("Starting program...")
-    pdf_filepath = os.path.join(".", "files", "list.pdf")
-    printer_name = get_printer_name(logger=logger)
-    if printer_name is None:
-        logger.info("Exiting early since printer not found")
+    def submit_selection(self):
+        """Collect and show the selected recipes."""
+        self.selected_recipes = [recipe for var, recipe in self.recipe_vars if var.get()]
+        ProcessSelection(self.conf, self.printer_name).execute(self.selected_recipes, self.output_filename)
 
-    precleaning(pdf_filepath, logger=logger) # Cleans up dirty files as a sanity check
-
-
-    meal_fps = [
-        os.path.join(".", "recipes", "bean_stuff.md"),
-        os.path.join(".", "recipes", "guacamole.md"),
-    ]
-    (meals, items) = select_meals(meal_fps)
-    logger.info(f"Using meals: {json.dumps(meals)}")
-    logger.info(f"Produced ingredient-deck: {json.dumps(items)}")
-
-    # TODO: Re-enable
-    # create_latex_document(meals, items, logger=logger)
-    # generate_latex_file(logger=logger)
-    # print_pdf(pdf_filepath, printer_name, dry_run=args.dry_run, logger=logger)
-    logger.info("Exiting program...\n\n")
-
-def select_meals(meal_fps, logger=None):
-    """
-    meal_fps: A collection of `os.path.join(".", "recipes", ".......")`
-    """
-
-    meal_names = []
-    for meal_fp in meal_fps:
-        meal_name = subprocess.run(
-            ["recipemd", meal_fp, "-t"],
-            capture_output=True,
-            text=True
-        ).stdout
+        # Show the selected recipes in a messagebox
+        if self.selected_recipes:
+            messagebox.showinfo("Selected Recipes", "Selected recipes:\n" + "\n".join(self.selected_recipes))
+        else:
+            messagebox.showinfo("No Selection", "No recipes selected.")
 
 
-        meal_names.append(meal_name.replace("\n", ""))
+class ProcessSelection:
+    def __init__(self, conf, printer_name):
+        self.conf = conf
+        self.printer_name = printer_name
+
+    def execute(self, selected_recipes, output_filename):
+        meal_fps = [os.path.join(".", "recipes", recipe) for recipe in selected_recipes]
+        (meals, items) = self._select_meals(meal_fps)
+        logger.info(f"Using meals: {json.dumps(meals)}")
+        logger.info(f"Produced ingredient deck: {json.dumps(items)}")
+
+        self._create_latex_document(meals, items, logger=logger)
+        self._generate_latex_file(logger=logger)
+        self._print_pdf(output_filename, self.printer_name, dry_run=self.conf.dry_run, logger=logger)
+        logger.info("Exiting program...\n\n")
 
 
-    REJECT_LIST = [""] # Reject non-ingredient words
-    ingredients = []
+    def _select_meals(self, meal_fps, logger=None):
+        """
+        meal_fps: A collection of `os.path.join(".", "recipes", ".......")`
+        """
 
-    for meal_fp in meal_fps:
-        meal_ingredients = subprocess.run(
-            ["recipemd", meal_fp, "-i"],
-            capture_output=True,
-            text=True
-        ).stdout
-
-        for mi in meal_ingredients.split("\n"):
-            if re.search(r"^to taste", mi) is not None:
-                # Don't print out common ingredients like salt pepper, etc.
-                # Can make this configurable in the future if we want.
-                continue
-
-            if mi in REJECT_LIST:
-                continue
-
-            cleaned_ingredient = re.sub(CLEAN_INGREDIENT_PTN, "", mi).strip()
-            ingredients.append(cleaned_ingredient)
-
-    sorted_unique_ingredients = sorted(set(ingredients))
-    return (meal_names, sorted_unique_ingredients)
+        meal_names = []
+        for meal_fp in meal_fps:
+            meal_name = subprocess.run(
+                ["recipemd", meal_fp, "-t"],
+                capture_output=True,
+                text=True
+            ).stdout
 
 
-def create_latex_document(meals, items, logger=None):
-    logger.info("Creating generated-list.tex using template.tex")
-    env = Environment(loader=FileSystemLoader('.'))
-    template = env.get_template(os.path.join(".", "files", "template.tex"))
-    data = { 'items': items, 'meals': meals }
-    filled_template = template.render(data)
+            meal_names.append(meal_name.replace("\n", ""))
 
-    with open(os.path.join(".", "files", "generated-list.tex"), "w") as f:
-        f.write(filled_template)
 
-def generate_latex_file(logger=None):
-    logger.info("Generating latex file")
-    file_path = os.path.join(".", "files", "generated-list.tex")
-    file_dir = os.path.join(".", "files")
-    subprocess.run(["pdflatex", f"-output-directory={file_dir}", file_path], check=True)
+        REJECT_LIST = [""] # Reject non-ingredient words
+        ingredients = []
 
-def print_pdf(file_path, printer_name, dry_run=False, logger=None):
-    if dry_run:
-        logger.info("Dry-running the print job")
-        return
+        for meal_fp in meal_fps:
+            meal_ingredients = subprocess.run(
+                ["recipemd", meal_fp, "-i"],
+                capture_output=True,
+                text=True
+            ).stdout
 
-    try:
-        # Adjust paper size and other settings as needed
-        subprocess.run([
-            "lp",
-            "-d", printer_name,          # Specify the printer by its name
-            "-o", "media=Custom.4x5in",  # Set custom paper size
-            "-o", "fit-to-page",         # Fit content to the page (optional)
-            "-o", "print-quality=5",         # High print quality (5 is generally highest)
-            "-o", "ColorModel=Gray",         # Monochrome (grayscale)
-            "-o", "print-color-mode=monochrome",  # Force monochrome mode (redundant, but ensures grayscale)
-            "-o", "cpi=12",                  # Characters per inch (CPI), optimized for text readability
-            "-o", "resolution=150dpi",        # Lower DPI for faster print (try 72dpi if available)
-            file_path                    # Path to the PDF file
-        ], check=True)
-        logger.info("Print job sent successfully.")
-    except subprocess.CalledProcessError as e:
-        logger.exception("Error sending print job")
+            for mi in meal_ingredients.split("\n"):
+                if re.search(r"^to taste", mi) is not None:
+                    # Don't print out common ingredients like salt pepper, etc.
+                    # Can make this configurable in the future if we want.
+                    continue
+
+                if mi in REJECT_LIST:
+                    continue
+
+                cleaned_ingredient = re.sub(CLEAN_INGREDIENT_PTN, "", mi).strip()
+                ingredients.append(cleaned_ingredient)
+
+        sorted_unique_ingredients = sorted(set(ingredients))
+        return (meal_names, sorted_unique_ingredients)
+
+
+    def _create_latex_document(self, meals, items, logger=None):
+        logger.info("Creating generated-list.tex using template.tex")
+        env = Environment(loader=FileSystemLoader('.'))
+        template = env.get_template(os.path.join(".", "files", "template.tex"))
+        data = { 'items': items, 'meals': meals }
+        filled_template = template.render(data)
+
+        with open(os.path.join(".", "files", "generated-list.tex"), "w") as f:
+            f.write(filled_template)
+
+    def _generate_latex_file(self, logger=None):
+        logger.info("Generating latex file")
+        file_path = os.path.join(".", "files", "generated-list.tex")
+        file_dir = os.path.join(".", "files")
+        subprocess.run(["pdflatex", f"-output-directory={file_dir}", file_path], check=True)
+
+    def _print_pdf(self, file_path, printer_name, dry_run=False, logger=None):
+        if dry_run:
+            logger.info("Dry-running the print job")
+            return
+
+        try:
+            # Adjust paper size and other settings as needed
+            subprocess.run([
+                "lp",
+                "-d", printer_name,          # Specify the printer by its name
+                "-o", "media=Custom.4x5in",  # Set custom paper size
+                "-o", "fit-to-page",         # Fit content to the page (optional)
+                "-o", "print-quality=5",         # High print quality (5 is generally highest)
+                "-o", "ColorModel=Gray",         # Monochrome (grayscale)
+                "-o", "print-color-mode=monochrome",  # Force monochrome mode (redundant, but ensures grayscale)
+                "-o", "cpi=12",                  # Characters per inch (CPI), optimized for text readability
+                "-o", "resolution=150dpi",        # Lower DPI for faster print (try 72dpi if available)
+                file_path                    # Path to the PDF file
+            ], check=True)
+            logger.info("Print job sent successfully.")
+        except subprocess.CalledProcessError as e:
+            logger.exception("Error sending print job")
 
 
 def setup_logger():
@@ -227,5 +255,56 @@ def precleaning(pdf_filepath, logger=None):
 
 
 if __name__ == "__main__":
-    main()
+    """
+     Getting Started
+    ---------------
 
+    .. code-block:: bash
+
+        sudo apt install python3-tk
+        sudo apt install tk-dev
+        asdf uninstall python 3.13.0
+        asdf install python 3.13.0
+
+
+    .. code-block:: bash
+
+        pip3 install textual
+        pip3 install jinja2
+        pip3 install recipemd
+        pip3 install sphinx
+
+
+     Maintenance
+    ---------------
+
+    Generate the docs with the following.
+
+    .. code-block:: bash
+
+        make html
+
+
+    Helpful Notes
+    -------------
+
+    - Edit ``./files/template.tex`` if you need to adjust the template
+    """
+    parser = argparse.ArgumentParser(description="Print a PDF file to a LAN printer.")
+    parser.add_argument("--dry-run", action="store_true", help="Simulate the print job without sending it to the printer")
+    args = parser.parse_args()
+
+    logger = setup_logger()
+
+    logger.info("Starting program...")
+
+    printer_name = get_printer_name(logger=logger)
+    if printer_name is None:
+        logger.info("Exiting early since printer not found")
+
+    pdf_filepath = os.path.join(".", "files", "list.pdf")
+    precleaning(pdf_filepath, logger=logger) # Cleans up dirty files as a sanity check
+
+    root = tk.Tk()
+    app = RecipeSelectorGUI(root, printer_name=printer_name, output_filename=pdf_filepath, conf=args)
+    root.mainloop()

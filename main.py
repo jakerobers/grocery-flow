@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 """
-For really being able to use it
-    OCR recipe cards to store in a document-driven data store
-    OCR / GPT pipeline that can take a list of photos and convert it to recipemd files
+User feedback
+    Need more recipes - OCR recipe cards and convert to recipemd (use ./bin/to_recipemd)
 
 For sharing with others:
     Add an installer that adds a desktop icon for easy execution
     Move the ./recipes outside of this repo so that you can publish it to github and let others add their own recipes
+    Eventually we can make a static site generator to make these publicly accessible
 
 For collaborating
     figure out configuring sphinx to use the comments in this code
@@ -28,6 +28,12 @@ from jinja2 import Environment, FileSystemLoader
 
 CLEAN_INGREDIENT_PTN = r"^(to taste|[\d]+(?:\.\d+)?(?:\s(?:diced|oz|cups?|cloves?|grams?|teaspoons?|pinches?|packages?|tablespoons?|sliced|grated|ground|melted|ounces|lb|minced|tbsp|tsp|bunch|chopped|halved|scoop|juiced|pounds|stalk|pinch))*)\s*"
 
+# TODO: make this configurable from the UI
+PINNED_RECIPES = [
+    "bean_stuff.md",
+    "mexican_quinoa.md"
+]
+
 
 
 class RecipeSelectorGUI:
@@ -45,7 +51,7 @@ class RecipeSelectorGUI:
         master.geometry("600x600")
 
         # Title Label
-        title_label = tk.Label(master, text="Select Recipes", font=("Helvetica", 16))
+        title_label = tk.Label(master, text="Select Your Meals", font=("Helvetica", 16))
         title_label.pack(pady=10)
 
         # Scrollable Frame for Checkboxes
@@ -53,6 +59,11 @@ class RecipeSelectorGUI:
         self.checkbox_frame.pack(fill="both", expand=True, padx=10)
 
         self.canvas = tk.Canvas(self.checkbox_frame)
+        self.canvas.bind_all("<MouseWheel>", self._on_mouse_wheel)  # For Windows and macOS
+        # For Linux, you may need to use <Button-4> and <Button-5> events
+        self.canvas.bind_all("<Button-4>", self._on_mouse_wheel)
+        self.canvas.bind_all("<Button-5>", self._on_mouse_wheel)
+
         self.scrollbar = tk.Scrollbar(self.checkbox_frame, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = tk.Frame(self.canvas)
 
@@ -93,9 +104,19 @@ class RecipeSelectorGUI:
         text_handler = TextHandler(self.log_text)
         self.logger.addHandler(text_handler)
 
+    def _on_mouse_wheel(self, event):
+        if event.num == 5 or event.delta == -120:
+            self.canvas.yview_scroll(1, "units")  # Scroll down
+        elif event.num == 4 or event.delta == 120:
+            self.canvas.yview_scroll(-1, "units")  # Scroll up
+
     def get_recipes(self):
         """Retrieve a list of RecipeMD files from the recipes directory."""
         meal_files = [f for f in os.listdir(self.recipe_dir) if f.endswith(".md")]
+        pinned_meal_files = [x for x in meal_files if x in PINNED_RECIPES]
+        unpinned_meal_files = [x for x in meal_files if x not in PINNED_RECIPES]
+        meal_files = pinned_meal_files + unpinned_meal_files
+
         meal_names = []
         for meal_file in meal_files:
             meal_fp = os.path.join(".", "recipes", meal_file)
@@ -104,7 +125,12 @@ class RecipeSelectorGUI:
                 capture_output=True,
                 text=True
             ).stdout
-            meal_names.append((meal_file, meal_name.strip()))
+
+            meal_name = meal_name.strip()
+            if meal_file in pinned_meal_files:
+                meal_name = f"^ {meal_name}"
+
+            meal_names.append((meal_file, meal_name))
 
         return meal_names
 
@@ -141,11 +167,11 @@ class ProcessSelection:
 
     def execute(self, selected_recipes, output_filename):
         meal_fps = [os.path.join(".", "recipes", recipe) for recipe in selected_recipes]
-        (meals, items) = self._select_meals(meal_fps)
-        logger.info(f"Using meals: {json.dumps(meals)}")
+        (meal_idx, items) = self._select_meals(meal_fps)
+        logger.info(f"Using meals: {json.dumps(meal_idx)}")
         logger.info(f"Produced ingredient deck: {json.dumps(items)}")
 
-        self._create_latex_document(meals, items, logger=logger)
+        self._create_latex_document(meal_idx, items, logger=logger)
         self._generate_latex_file(logger=logger)
         self._print_pdf(output_filename, self.printer_name, dry_run=self.conf.dry_run, logger=logger)
         logger.info("Exiting program...\n\n")
@@ -156,7 +182,8 @@ class ProcessSelection:
         meal_fps: A collection of `os.path.join(".", "recipes", ".......")`
         """
 
-        meal_names = []
+        meal_idx = {}
+        letter = 65 # A
         for meal_fp in meal_fps:
             meal_name = subprocess.run(
                 ["recipemd", meal_fp, "-t"],
@@ -165,7 +192,13 @@ class ProcessSelection:
             ).stdout
 
 
-            meal_names.append(meal_name.replace("\n", ""))
+            meal_title = meal_name.replace("\n", "")
+            meal_idx[meal_fp] = {
+                'title': meal_title,
+                'short_code': chr(letter),
+                'ingredients': []
+            }
+            letter += 1
 
 
         ingredients = []
@@ -177,7 +210,9 @@ class ProcessSelection:
                 text=True
             ).stdout
 
-            for mi in meal_ingredients.split("\n"):
+            meal_ingredient_items = meal_ingredients.split("\n")
+
+            for mi in meal_ingredient_items:
                 if re.search(r"^to taste", mi) is not None:
                     # Don't print out common ingredients like salt pepper, etc.
                     # Can make this configurable in the future if we want.
@@ -187,10 +222,25 @@ class ProcessSelection:
                     continue
 
                 cleaned_ingredient = re.sub(CLEAN_INGREDIENT_PTN, "", mi).strip()
+                meal_idx[meal_fp]['ingredients'].append(cleaned_ingredient)
                 ingredients.append(cleaned_ingredient)
 
-        sorted_unique_ingredients = sorted(set(ingredients))
-        return (meal_names, sorted_unique_ingredients)
+        sorted_unique_ingredients = list(sorted(set(ingredients)))
+
+        # Go through and tag each ingredient to its corresponding meals.
+        # This way when you're looking at the shopping list, you can easily
+        # tell from a glance which ingredient corresponds to which meal(s)
+        tagged_ingredients = []
+        for i in sorted_unique_ingredients:
+            meal_tag = []
+
+            for _k, v in meal_idx.items():
+                if i in v['ingredients']:
+                    meal_tag.append(v['short_code'])
+
+            tagged_ingredients.append(f"{i} ({','.join(meal_tag)})")
+
+        return (meal_idx, tagged_ingredients)
 
     def _in_reject_list(self, ingredient):
         REJECT_LIST = [r".*water.*"] # Things to omit from a shopping list
@@ -204,10 +254,15 @@ class ProcessSelection:
         return False
 
 
-    def _create_latex_document(self, meals, items, logger=None):
+    def _create_latex_document(self, meal_idx, items, logger=None):
         logger.info("Creating generated-list.tex using template.tex")
         env = Environment(loader=FileSystemLoader('.'))
         template = env.get_template(os.path.join(".", "files", "template.tex"))
+
+        meals = []
+        for _k, v in meal_idx.items():
+            meals.append(f"({v['short_code']}) {v['title']}")
+
         data = { 'items': items, 'meals': meals }
         filled_template = template.render(data)
 
@@ -221,6 +276,7 @@ class ProcessSelection:
         subprocess.run(["pdflatex", f"-output-directory={file_dir}", file_path], check=True)
 
     def _print_pdf(self, file_path, printer_name, dry_run=False, logger=None):
+        return
         if dry_run:
             logger.info("Dry-running the print job")
             return

@@ -16,6 +16,8 @@
 % Meals Section
 \noindent\textbf{Meals} % Header for Meals
 \begin{itemize}
+    \setlength{\itemindent}{-1em} % Adjust as needed
+    \setlength{\leftskip}{-1em}   % Adjust as needed
     \setlength\itemsep{0pt} % Reduce spacing between items
     {% for meal in meals %}
         \item {{ meal }}
@@ -26,6 +28,8 @@
 \vspace{0.1in} % Optional spacing between sections
 \noindent\textbf{Shopping List} % Header for Shopping List
 \begin{itemize}
+    \setlength{\itemindent}{-1em} % Adjust as needed
+    \setlength{\leftskip}{-1em}   % Adjust as needed
     \setlength\itemsep{0pt} % Reduce spacing between items
     {% for item in items %}
         \item {{ item }}

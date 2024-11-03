@@ -6,7 +6,7 @@ Converts a photo of a recipe card to recipemd. Outputs results to stdout.
 Usage with `cat`
 
 ```
-cat <<EOF | ./bin/img_to_recipemd > ./recipes/shrimp_curried_pasta.md
+cat <<EOF | ./bin/to_recipemd > ./recipes/shrimp_curried_pasta.md
 ... your unstructured text here.
 EOF
 ```

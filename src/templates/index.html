@@ -1,7 +1,17 @@
 <!doctype html>
-<title>Hello from Flask</title>
-{% if person %}
-  <h1>Hello {{ person }}!</h1>
-{% else %}
-  <h1>Hello, World!</h1>
-{% endif %}
+<title>GroceryFlow</title>
+
+<h1>Recipes</h1>
+<form method="POST">
+  <ul>
+    {% for item in recipes %}
+      <li>
+        <label>
+          <input type="checkbox" name="items" value="{{item[0]}}" />
+            {{item[1]}}
+        </label>
+      </li>
+    {% endfor %}
+  </ul>
+  <button type="submit">Submit</button>
+</form>

@@ -1,8 +1,10 @@
-#!/usr/bin/env python3
-
 """
 User feedback
+    I'd like to more easily be able to add recipes
+    I'd like to more easily validate recipes that were added
     I'd like to provide my own master list of item ordering so that the list order matches the order that I get stuff at the store
+    I'd like to use this on my phone
+    Instead of printing, I'd like to send the order to Doordash or Aldi for pickup
 
 For sharing with others:
     How do we package this up as a one-click install app. Would like desktop icon for easy execution.
@@ -252,7 +254,6 @@ class ProcessSelection:
         subprocess.run(["pdflatex", f"-output-directory={file_dir}", file_path], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def _print_pdf(self, file_path, printer_name, dry_run=False, logger=None):
-        return
         if dry_run:
             logger.info("Dry-running the print job")
             return

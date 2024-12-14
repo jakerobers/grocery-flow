@@ -2,12 +2,10 @@ import logging
 import os
 import uuid
 from jinja2 import Environment, FileSystemLoader
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from utils import get_printer_name, get_recipes, create_latex_document, generate_pdf, MealBuilder
-from flask_sock import Sock
 
 app = Flask(__name__)
-sock = Sock(app)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,17 +16,26 @@ logging.basicConfig(
     ]
 )
 
+@app.route("/document_readiness/<uuid:doc_id>", methods=["GET"])
+def document_readiness(doc_id):
+    try:
+        uuid_obj = uuid.UUID(doc_id)
+        if os.path.isfile(f"{app.config['output_dir']}/{str(uuid_obj)}.pdf"):
+            return jsonify({"status": "available"})
+        else:
+            return jsonify({"status": "not found"})
 
-@sock.route('/echo')
-def echo(ws):
-    while True:
-        data = ws.receive()
-        ws.send(data)
+    except (ValueError, TypeError):
+        return jsonify({"status": "invalid payload"})
+
 
 @app.route("/", methods=["GET"])
 def index():
     get_printer_name(logger=app.logger)
-    return render_template('index.html', recipes=app.recipes)
+
+    js_context = {"pending_document": "38aeafca-80e1-4496-b584-354fb5bb07c4"}
+    # js_context = {}
+    return render_template('index.html', recipes=app.recipes, js_context=js_context)
 
 @app.route("/", methods=["POST"])
 def submit():
@@ -45,7 +52,8 @@ def submit():
     create_latex_document(template, tex_path, meal_idx, items, logger=app.logger)
     pdf_filepath = generate_pdf(tex_path, logger=app.logger)
 
-    return render_template('index.html', recipes=app.recipes)
+    js_context = {"pending_document": filename}
+    return render_template('index.html', recipes=app.recipes, js_context=js_context)
 
 if __name__ == "__main__":
     app.config["output_dir"] = os.path.join("/tmp", "files")

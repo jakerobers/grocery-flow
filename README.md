@@ -1,6 +1,6 @@
-Run dev webserver: `python ./src/main.py`
-Source env: `source ./venv/bin/activate`
-Snapshotting deps: `pip3 freeze > requirements.txt`
+Run dev webserver: python ./src/main.py
+Source env: source ./venv/bin/activate
+Snapshotting deps: pip3 freeze > requirements.txt
 
 Go to web:
 - socket notifies client that the document is ready with /document url (https://flask-sock.readthedocs.io/en/latest/quickstart.html#example)

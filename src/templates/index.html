@@ -1,17 +1,32 @@
-<!doctype html>
-<title>GroceryFlow</title>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foodz</title>
+    <!-- Link CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  </head>
+  <body>
+    <h1>Recipes</h1>
 
-<h1>Recipes</h1>
-<form method="POST">
-  <ul>
-    {% for item in recipes %}
-      <li>
-        <label>
-          <input type="checkbox" name="items" value="{{item[0]}}" />
-            {{item[1]}}
-        </label>
-      </li>
-    {% endfor %}
-  </ul>
-  <button type="submit">Submit</button>
-</form>
+    <form method="POST">
+      <ul>
+        {% for item in recipes %}
+          <li>
+            <label>
+              <input type="checkbox" name="items" value="{{item[0]}}" />
+              {{item[1]}}
+            </label>
+          </li>
+        {% endfor %}
+      </ul>
+      <button type="submit">Submit</button>
+    </form>
+    <script>
+      const context = {{ js_context|tojson }};
+    </script>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </body>
+</html>

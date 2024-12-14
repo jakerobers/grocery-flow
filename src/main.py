@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from jinja2 import Environment, FileSystemLoader
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from utils import get_printer_name, get_recipes, create_latex_document, generate_pdf, MealBuilder
 
 app = Flask(__name__)
@@ -16,7 +16,7 @@ logging.basicConfig(
     ]
 )
 
-@app.route("/document_readiness/<uuid:doc_id>", methods=["GET"])
+@app.route("/document_readiness/<doc_id>", methods=["GET"])
 def document_readiness(doc_id):
     try:
         uuid_obj = uuid.UUID(doc_id)
@@ -29,6 +29,13 @@ def document_readiness(doc_id):
         return jsonify({"status": "invalid payload"})
 
 
+@app.route("/documents/<doc_id>", methods=["GET"])
+def fetch_document(doc_id):
+    print(app.config["output_dir"])
+    print(doc_id)
+    return send_from_directory(app.config["output_dir"], doc_id)
+
+
 @app.route("/", methods=["GET"])
 def index():
     get_printer_name(logger=app.logger)
@@ -36,6 +43,7 @@ def index():
     js_context = {"pending_document": "38aeafca-80e1-4496-b584-354fb5bb07c4"}
     # js_context = {}
     return render_template('index.html', recipes=app.recipes, js_context=js_context)
+
 
 @app.route("/", methods=["POST"])
 def submit():

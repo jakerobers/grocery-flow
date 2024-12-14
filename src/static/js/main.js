@@ -1,24 +1,28 @@
-function waitForDocument(attempt, retries) {
-  setTimeout(function() {
-    fetch("/document_readiness").then(function(response) {
-      if (!response.ok) {
-         throw new Error(`HTTP error! status: ${response.status}`);
-      }
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-      const responseJson = response.json();
-      console.log("resp", responseJson);
-    });
+async function waitForDocument() {
+  for (let i = 0; i < 10; i++) {
+    await delay(1000);
 
-    if (attempt < retries) {
-      console.log("retrying...", attempt)
-      waitForDocument(attempt+1, retries);
-    } else {
-      console.log("Max attempts reached")
+    const response = await fetch(`/document_readiness/${context.pending_document}`)
+    if (!response.ok) {
+       throw new Error(`HTTP error! status: ${response.status}`);
     }
-  }, 1000);
 
+    const responseJson = await response.json();
+    if (responseJson.status == "available") {
+      window.open(`/documents/${context.pending_document}.pdf`, "_blank");
+      return
+    } else if (responseJson.status == "invalid payload") {
+      throw new Error("Sent bad payload");
+    }
+  }
+
+  console.log("max attempts reached");
 }
 
 if (context.pending_document) {
-  waitForDocument(0, 10)
+  waitForDocument();
 }

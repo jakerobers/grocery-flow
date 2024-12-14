@@ -4,8 +4,10 @@ import uuid
 from jinja2 import Environment, FileSystemLoader
 from flask import Flask, render_template, request
 from utils import get_printer_name, get_recipes, create_latex_document, generate_pdf, MealBuilder
+from flask_sock import Sock
 
 app = Flask(__name__)
+sock = Sock(app)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -15,6 +17,13 @@ logging.basicConfig(
         logging.FileHandler("app.log")
     ]
 )
+
+
+@sock.route('/echo')
+def echo(ws):
+    while True:
+        data = ws.receive()
+        ws.send(data)
 
 @app.route("/", methods=["GET"])
 def index():
@@ -41,6 +50,8 @@ def submit():
 if __name__ == "__main__":
     app.config["output_dir"] = os.path.join("/tmp", "files")
     os.makedirs(app.config["output_dir"], exist_ok=True)
+
+    app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
 
     app.config["recipe_dir"] = "/home/jake/Code/project-recipe/recipes"
     app.config["printable_tex_template_path"] = os.path.join(".", "files", "template.tex")

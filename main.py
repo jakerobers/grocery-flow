@@ -34,19 +34,23 @@ from jinja2 import Environment, FileSystemLoader
 CLEAN_INGREDIENT_PTN = r"^(to taste|to serve|[\d]+(?:\.\d+)?(?:\s(?:diced|oz|cups?|cloves?|grams?|teaspoons?|pinches?|packages?|tablespoons?|sliced|grated|ground|melted|ounces|lb|minced|tbsp|tsp|bunch|chopped|halved|scoop|juiced|pounds|stalks?|pinch|cans?|squeezed))*)\s*"
 
 # TODO: make this configurable from the UI
-PINNED_RECIPES = [
-    "bean_stuff.md",
-    "mexican_quinoa.md"
-]
-
+PINNED_RECIPES = ["bean_stuff.md", "mexican_quinoa.md"]
 
 
 class RecipeSelectorGUI:
-    def __init__(self, master, recipe_dir="./recipes", printer_name=None, output_filename=None, conf=None, logger=None):
+    def __init__(
+        self,
+        master,
+        recipe_dir="./recipes",
+        printer_name=None,
+        output_filename=None,
+        conf=None,
+        logger=None,
+    ):
         self.master = master
-        self.logger=logger
+        self.logger = logger
         self.recipe_dir = recipe_dir
-        self.printer_name=printer_name
+        self.printer_name = printer_name
         self.output_filename = output_filename
         self.conf = conf
         self.selected_recipes = []
@@ -64,17 +68,21 @@ class RecipeSelectorGUI:
         self.checkbox_frame.pack(fill="both", expand=True, padx=10)
 
         self.canvas = tk.Canvas(self.checkbox_frame)
-        self.canvas.bind_all("<MouseWheel>", self._on_mouse_wheel)  # For Windows and macOS
+        self.canvas.bind_all(
+            "<MouseWheel>", self._on_mouse_wheel
+        )  # For Windows and macOS
         # For Linux, you may need to use <Button-4> and <Button-5> events
         self.canvas.bind_all("<Button-4>", self._on_mouse_wheel)
         self.canvas.bind_all("<Button-5>", self._on_mouse_wheel)
 
-        self.scrollbar = tk.Scrollbar(self.checkbox_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollbar = tk.Scrollbar(
+            self.checkbox_frame, orient="vertical", command=self.canvas.yview
+        )
         self.scrollable_frame = tk.Frame(self.canvas)
 
         self.scrollable_frame.bind(
             "<Configure>",
-            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
         )
 
         self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
@@ -87,14 +95,15 @@ class RecipeSelectorGUI:
         self.recipe_vars = []
         for recipe in self.get_recipes():
             var = tk.BooleanVar()
-            checkbox = tk.Checkbutton(self.scrollable_frame, text=recipe[1], variable=var)
+            checkbox = tk.Checkbutton(
+                self.scrollable_frame, text=recipe[1], variable=var
+            )
             checkbox.pack(anchor="w", padx=10, pady=2)
             self.recipe_vars.append((var, recipe))
 
         # Submit Button
         submit_button = tk.Button(master, text="Submit", command=self.submit_selection)
         submit_button.pack(pady=10)
-
 
     def _on_mouse_wheel(self, event):
         if event.num == 5 or event.delta == -120:
@@ -113,9 +122,7 @@ class RecipeSelectorGUI:
         for meal_file in meal_files:
             meal_fp = os.path.join(".", "recipes", meal_file)
             meal_name = subprocess.run(
-                ["recipemd", meal_fp, "-t"],
-                capture_output=True,
-                text=True
+                ["recipemd", meal_fp, "-t"], capture_output=True, text=True
             ).stdout
 
             meal_name = meal_name.strip()
@@ -126,15 +133,21 @@ class RecipeSelectorGUI:
 
         return meal_names
 
-
     def submit_selection(self):
         """Collect and show the selected recipes."""
-        self.selected_recipes = [recipe[0] for var, recipe in self.recipe_vars if var.get()]
-        ProcessSelection(self.conf, self.printer_name).execute(self.selected_recipes, self.output_filename)
+        self.selected_recipes = [
+            recipe[0] for var, recipe in self.recipe_vars if var.get()
+        ]
+        ProcessSelection(self.conf, self.printer_name).execute(
+            self.selected_recipes, self.output_filename
+        )
 
         # Show the selected recipes in a messagebox
         if self.selected_recipes:
-            messagebox.showinfo("Selected Recipes", "Selected recipes:\n" + "\n".join(self.selected_recipes))
+            messagebox.showinfo(
+                "Selected Recipes",
+                "Selected recipes:\n" + "\n".join(self.selected_recipes),
+            )
         else:
             messagebox.showinfo("No Selection", "No recipes selected.")
 
@@ -152,9 +165,10 @@ class ProcessSelection:
 
         self._create_latex_document(meal_idx, items, logger=logger)
         self._generate_latex_file(logger=logger)
-        self._print_pdf(output_filename, self.printer_name, dry_run=self.conf.dry_run, logger=logger)
+        self._print_pdf(
+            output_filename, self.printer_name, dry_run=self.conf.dry_run, logger=logger
+        )
         logger.info("Sent to printer...")
-
 
     def _select_meals(self, meal_fps, logger=None):
         """
@@ -162,31 +176,25 @@ class ProcessSelection:
         """
 
         meal_idx = {}
-        letter = 65 # A
+        letter = 65  # A
         for meal_fp in meal_fps:
             meal_name = subprocess.run(
-                ["recipemd", meal_fp, "-t"],
-                capture_output=True,
-                text=True
+                ["recipemd", meal_fp, "-t"], capture_output=True, text=True
             ).stdout
-
 
             meal_title = meal_name.replace("\n", "")
             meal_idx[meal_fp] = {
-                'title': meal_title,
-                'short_code': chr(letter),
-                'ingredients': []
+                "title": meal_title,
+                "short_code": chr(letter),
+                "ingredients": [],
             }
             letter += 1
-
 
         ingredients = []
 
         for meal_fp in meal_fps:
             meal_ingredients = subprocess.run(
-                ["recipemd", meal_fp, "-i"],
-                capture_output=True,
-                text=True
+                ["recipemd", meal_fp, "-i"], capture_output=True, text=True
             ).stdout
 
             meal_ingredient_items = meal_ingredients.split("\n")
@@ -201,7 +209,7 @@ class ProcessSelection:
                     continue
 
                 cleaned_ingredient = re.sub(CLEAN_INGREDIENT_PTN, "", mi).strip()
-                meal_idx[meal_fp]['ingredients'].append(cleaned_ingredient)
+                meal_idx[meal_fp]["ingredients"].append(cleaned_ingredient)
                 ingredients.append(cleaned_ingredient)
 
         sorted_unique_ingredients = list(sorted(set(ingredients)))
@@ -214,15 +222,15 @@ class ProcessSelection:
             meal_tag = []
 
             for _k, v in meal_idx.items():
-                if i in v['ingredients']:
-                    meal_tag.append(v['short_code'])
+                if i in v["ingredients"]:
+                    meal_tag.append(v["short_code"])
 
             tagged_ingredients.append(f"{i} ({','.join(meal_tag)})")
 
         return (meal_idx, tagged_ingredients)
 
     def _in_reject_list(self, ingredient):
-        REJECT_LIST = [r".*water.*"] # Things to omit from a shopping list
+        REJECT_LIST = [r".*water.*"]  # Things to omit from a shopping list
         if ingredient.strip() == "":
             return True
 
@@ -232,17 +240,16 @@ class ProcessSelection:
 
         return False
 
-
     def _create_latex_document(self, meal_idx, items, logger=None):
         logger.info("Creating generated-list.tex using template.tex")
-        env = Environment(loader=FileSystemLoader('.'))
+        env = Environment(loader=FileSystemLoader("."))
         template = env.get_template(os.path.join(".", "files", "template.tex"))
 
         meals = []
         for _k, v in meal_idx.items():
             meals.append(f"({v['short_code']}) {v['title']}")
 
-        data = { 'items': items, 'meals': meals }
+        data = {"items": items, "meals": meals}
         filled_template = template.render(data)
 
         with open(os.path.join(".", "files", "generated-list.tex"), "w") as f:
@@ -252,7 +259,12 @@ class ProcessSelection:
         logger.info("Generating latex file")
         file_path = os.path.join(".", "files", "generated-list.tex")
         file_dir = os.path.join(".", "files")
-        subprocess.run(["pdflatex", f"-output-directory={file_dir}", file_path], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            ["pdflatex", f"-output-directory={file_dir}", file_path],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     def _print_pdf(self, file_path, printer_name, dry_run=False, logger=None):
         if dry_run:
@@ -261,18 +273,29 @@ class ProcessSelection:
 
         try:
             # Adjust paper size and other settings as needed
-            subprocess.run([
-                "lp",
-                "-d", printer_name,          # Specify the printer by its name
-                "-o", "media=Custom.4x5in",  # Set custom paper size
-                "-o", "fit-to-page",         # Fit content to the page (optional)
-                "-o", "print-quality=5",         # High print quality (5 is generally highest)
-                "-o", "ColorModel=Gray",         # Monochrome (grayscale)
-                "-o", "print-color-mode=monochrome",  # Force monochrome mode (redundant, but ensures grayscale)
-                "-o", "cpi=12",                  # Characters per inch (CPI), optimized for text readability
-                "-o", "resolution=150dpi",        # Lower DPI for faster print (try 72dpi if available)
-                file_path                    # Path to the PDF file
-            ], check=True)
+            subprocess.run(
+                [
+                    "lp",
+                    "-d",
+                    printer_name,  # Specify the printer by its name
+                    "-o",
+                    "media=Custom.4x5in",  # Set custom paper size
+                    "-o",
+                    "fit-to-page",  # Fit content to the page (optional)
+                    "-o",
+                    "print-quality=5",  # High print quality (5 is generally highest)
+                    "-o",
+                    "ColorModel=Gray",  # Monochrome (grayscale)
+                    "-o",
+                    "print-color-mode=monochrome",  # Force monochrome mode (redundant, but ensures grayscale)
+                    "-o",
+                    "cpi=12",  # Characters per inch (CPI), optimized for text readability
+                    "-o",
+                    "resolution=150dpi",  # Lower DPI for faster print (try 72dpi if available)
+                    file_path,  # Path to the PDF file
+                ],
+                check=True,
+            )
             logger.info("Print job sent successfully.")
         except subprocess.CalledProcessError as e:
             logger.exception("Error sending print job")
@@ -305,23 +328,21 @@ def setup_logger():
 
 
 def get_printer_name(logger=None):
-        # printer {{name}} is idle.  enabled since {{datetime}}
-        lpstat_output = subprocess.run(
-            ["lpstat", "-p"],
-            capture_output=True,
-            text=True
-        ).stdout
+    # printer {{name}} is idle.  enabled since {{datetime}}
+    lpstat_output = subprocess.run(
+        ["lpstat", "-p"], capture_output=True, text=True
+    ).stdout
 
-        pattern = r"printer (\S+)"
-        match = re.search(pattern, lpstat_output)
+    pattern = r"printer (\S+)"
+    match = re.search(pattern, lpstat_output)
 
-        if match:
-            printer_name = match.group(1)
-            logger.info(f"Will send print to {printer_name}")
-            return printer_name
-        else:
-            logger.error("No printer found.")
-            return None
+    if match:
+        printer_name = match.group(1)
+        logger.info(f"Will send print to {printer_name}")
+        return printer_name
+    else:
+        logger.error("No printer found.")
+        return None
 
 
 def precleaning(pdf_filepath, logger=None):
@@ -370,7 +391,11 @@ if __name__ == "__main__":
     - Edit ``./files/template.tex`` if you need to adjust the template
     """
     parser = argparse.ArgumentParser(description="Print a PDF file to a LAN printer.")
-    parser.add_argument("--dry-run", action="store_true", help="Simulate the print job without sending it to the printer")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Simulate the print job without sending it to the printer",
+    )
     args = parser.parse_args()
 
     logger = setup_logger()
@@ -382,8 +407,14 @@ if __name__ == "__main__":
         logger.info("Exiting early since printer not found")
 
     pdf_filepath = os.path.join(".", "files", "generated-list.pdf")
-    precleaning(pdf_filepath, logger=logger) # Cleans up dirty files as a sanity check
+    precleaning(pdf_filepath, logger=logger)  # Cleans up dirty files as a sanity check
 
     root = tk.Tk()
-    app = RecipeSelectorGUI(root, printer_name=printer_name, output_filename=pdf_filepath, conf=args, logger=logger)
+    app = RecipeSelectorGUI(
+        root,
+        printer_name=printer_name,
+        output_filename=pdf_filepath,
+        conf=args,
+        logger=logger,
+    )
     root.mainloop()

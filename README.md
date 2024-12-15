@@ -2,7 +2,19 @@
 
 ## Runbook
 
+### Environment file
+
+```
+# .env
+
+# generated with `openssl rand -hex 32`
+SESSION_KEY=72ec47560a9ab6303af9fb3b7938212b4be8d31bbdb15da2465a277c55ff0dee
+PYTHONPATH='src'
+FILE_GEN_OUTPUT_DIR=/tmp/files
+```
+
 ### Running in production
+
 
 ```
 PYTHONPATH='src' gunicorn -w 4 -b 0.0.0.0:8000 src.main:app

@@ -1,15 +1,26 @@
 import logging
 import os
 import uuid
+from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    send_from_directory,
+    session,
+    redirect,
+)
 from utils import (
-    get_printer_name,
     get_recipes,
     create_latex_document,
     generate_pdf,
     MealBuilder,
 )
+
+# Load environment variables from the .env file
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -35,14 +46,14 @@ def document_readiness(doc_id):
 
 @app.route("/documents/<doc_id>", methods=["GET"])
 def fetch_document(doc_id):
-    print(app.config["output_dir"])
-    print(doc_id)
     return send_from_directory(app.config["output_dir"], doc_id)
 
 
 @app.route("/", methods=["GET"])
 def index():
-    get_printer_name(logger=app.logger)
+    username = session.get("username")
+    if username is None:
+        return redirect("/login")
 
     # js_context = {"pending_document": "38aeafca-80e1-4496-b584-354fb5bb07c4"}
     js_context = {}
@@ -51,6 +62,10 @@ def index():
 
 @app.route("/", methods=["POST"])
 def submit():
+    username = session.get("username")
+    if not username:
+        return redirect("/login")
+
     filename = str(uuid.uuid4())
     selected_items = request.form.getlist("items")
 
@@ -70,9 +85,27 @@ def submit():
     return render_template("index.html", recipes=app.recipes, js_context=js_context)
 
 
-app.config["output_dir"] = os.path.join("/tmp", "files")
+@app.route("/login", methods=["GET"])
+def login():
+    return render_template("login.html")
+
+
+@app.route("/login", methods=["POST"])
+def attempt_login():
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    if username == "robers" and password == "halley":
+        session["username"] = "robers"
+        return redirect("/")
+
+    return render_template("login.html")
+
+
+app.config["output_dir"] = os.getenv("FILE_GEN_OUTPUT_DIR")
 os.makedirs(app.config["output_dir"], exist_ok=True)
 
+app.secret_key = os.getenv("SESSION_KEY")
 app.config["recipe_dir"] = "/home/jake/Code/project-recipe/recipes"
 app.config["printable_tex_template_path"] = os.path.join(".", "files", "template.tex")
 app.recipes = get_recipes(app.config["recipe_dir"])

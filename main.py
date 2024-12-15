@@ -1,25 +1,3 @@
-"""
-User feedback
-    I'd like to more easily be able to add recipes
-    I'd like to more easily validate recipes that were added
-        - use gpt for fitting recipes to schema
-    I'd like to provide my own master list of item ordering so that the list order matches the order that I get stuff at the store
-    I'd like to use this on my phone
-    Instead of printing, I'd like to send the order to Doordash or Aldi for pickup
-
-For sharing with others:
-    How do we package this up as a one-click install app. Would like desktop icon for easy execution.
-    Move the ./recipes outside of this repo so that you can publish it to github and let others add their own recipes
-    Eventually we can make a static site generator to make these publicly accessible
-
-For collaborating
-    figure out configuring sphinx to use the comments in this code
-
-Things that will naturally arise as needs
-    split this out into an app directory
-    add unit tests
-"""
-
 import json
 import subprocess
 import re

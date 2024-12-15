@@ -70,7 +70,7 @@ def submit():
     selected_items = request.form.getlist("items")
 
     meal_fps = [
-        os.path.join(app.config["recipe_dir"], recipe) for recipe in selected_items
+        os.path.join(app.config["RECIPE_DIR"], recipe) for recipe in selected_items
     ]
     (meal_idx, items) = MealBuilder().select_meals(meal_fps)
 
@@ -106,9 +106,9 @@ app.config["output_dir"] = os.getenv("FILE_GEN_OUTPUT_DIR")
 os.makedirs(app.config["output_dir"], exist_ok=True)
 
 app.secret_key = os.getenv("SESSION_KEY")
-app.config["recipe_dir"] = "/home/jake/Code/project-recipe/recipes"
+app.config["RECIPE_DIR"] = os.getenv("RECIPE_DIR")
 app.config["printable_tex_template_path"] = os.path.join(".", "files", "template.tex")
-app.recipes = get_recipes(app.config["recipe_dir"])
+app.recipes = get_recipes(app.config["RECIPE_DIR"])
 
 if __name__ == "__main__":
     app.run()

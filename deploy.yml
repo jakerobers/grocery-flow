@@ -1,0 +1,81 @@
+- name: Deploy Flask App
+  hosts: instance_1
+  become: true
+  vars_files:
+    - ./store.yml
+
+  tasks:
+    # 1. Install dependencies
+    - name: Install system dependencies
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+          - git
+        state: present
+        update_cache: yes
+
+    # 2. Create project directory
+    - name: Create app directory
+      file:
+        path: /var/www/groceryflow
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: 0755
+
+    # 3. Upload project files
+    # TODO: Only upload the files that are specifically needed.
+    - name: Copy application files
+      copy:
+        src: /home/jake/Code/project-recipe/
+        dest: /var/www/groceryflow
+        owner: www-data
+        group: www-data
+        mode: 0755
+
+    # 4. Set up virtual environment
+    - name: Create virtual environment
+      command: python3 -m venv /var/www/groceryflow/venv
+      args:
+        creates: /var/www/groceryflow/venv
+
+    # 5. Install Python dependencies
+    - name: Install dependencies
+      command: /var/www/groceryflow/venv/bin/pip install -r /var/www/groceryflow/requirements.txt
+      args:
+        chdir: /var/www/groceryflow
+
+    # 6. Set up systemd service
+    - name: Configure systemd service
+      copy:
+        dest: /etc/systemd/system/groceryflow.service
+        content: |
+          [Unit]
+          Description=Gunicorn instance to serve groceryflow
+          After=network.target
+
+          [Service]
+          User=www-data
+          Group=www-data
+          WorkingDirectory=/var/www/groceryflow
+          Environment="PATH=/var/www/groceryflow/venv/bin"
+          ExecStart=/var/www/groceryflow/venv/bin/gunicorn --workers 1 --bind unix:/var/www/groceryflow/groceryflow.sock -m 007 src.main:app
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: restart flask app
+
+    # 7. Start and enable the service
+    - name: Start Flask app
+      systemd:
+        name: groceryflow
+        state: started
+        enabled: true
+
+  handlers:
+    - name: restart flask app
+      systemd:
+        name: groceryflow
+        state: restarted

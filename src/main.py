@@ -67,7 +67,6 @@ def submit():
 app.config["output_dir"] = os.path.join("/tmp", "files")
 os.makedirs(app.config["output_dir"], exist_ok=True)
 
-app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
 app.config["recipe_dir"] = "/home/jake/Code/project-recipe/recipes"
 app.config["printable_tex_template_path"] = os.path.join(".", "files", "template.tex")
 app.recipes = get_recipes(app.config['recipe_dir'])

@@ -40,8 +40,8 @@ def fetch_document(doc_id):
 def index():
     get_printer_name(logger=app.logger)
 
-    js_context = {"pending_document": "38aeafca-80e1-4496-b584-354fb5bb07c4"}
-    # js_context = {}
+    # js_context = {"pending_document": "38aeafca-80e1-4496-b584-354fb5bb07c4"}
+    js_context = {}
     return render_template('index.html', recipes=app.recipes, js_context=js_context)
 
 
@@ -63,13 +63,14 @@ def submit():
     js_context = {"pending_document": filename}
     return render_template('index.html', recipes=app.recipes, js_context=js_context)
 
+
+app.config["output_dir"] = os.path.join("/tmp", "files")
+os.makedirs(app.config["output_dir"], exist_ok=True)
+
+app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
+app.config["recipe_dir"] = "/home/jake/Code/project-recipe/recipes"
+app.config["printable_tex_template_path"] = os.path.join(".", "files", "template.tex")
+app.recipes = get_recipes(app.config['recipe_dir'])
+
 if __name__ == "__main__":
-    app.config["output_dir"] = os.path.join("/tmp", "files")
-    os.makedirs(app.config["output_dir"], exist_ok=True)
-
-    app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
-
-    app.config["recipe_dir"] = "/home/jake/Code/project-recipe/recipes"
-    app.config["printable_tex_template_path"] = os.path.join(".", "files", "template.tex")
-    app.recipes = get_recipes(app.config['recipe_dir'])
     app.run()

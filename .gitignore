@@ -3,3 +3,4 @@ __pycache__/main.cpython-313.pyc
 files/generated-*
 files/print_job.log
 app.log
+src/__pycache__

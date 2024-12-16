@@ -1,33 +1,20 @@
 # GroceryFlow
 
-## Runbook
+## Running in production
 
-### Environment file
+See the ansible deploy.yml file for what's required to deploy an instance.
 
-```
-# .env
+Other manual steps that are not included in the ansible file include:
+- Setting up the nginx reverse proxy
+- Installing pdflatex
 
-# generated with `openssl rand -hex 32`
-SESSION_KEY=72ec47560a9ab6303af9fb3b7938212b4be8d31bbdb15da2465a277c55ff0dee
-PYTHONPATH='src'
-FILE_GEN_OUTPUT_DIR=/tmp/files
-RECIPE_DIR=/home/jake/Code/project-recipe/recipes
-```
-
-### Running in production
-
-
-```
-PYTHONPATH='src' gunicorn -w 4 -b 0.0.0.0:8000 src.main:app
-```
-
-Deploying:
+To deploy the app, use:
 
 ```
 ansible-playbook -i inventory.yml deploy.yml --vault-password-file keyfile
 ```
 
-Ansible-related activity
+### Helpful Ansible Commands
 
 ```
 # vault management
@@ -37,7 +24,7 @@ ansible-vault view --vault-id @keyfile ./store.yml
 ansible-vault rekey --vault-password-file ./keyfile --new-vault-password-file ./keyfile.new ./store.yml
 ```
 
-Nginx Reverse Proxy
+### Nginx Reverse Proxy Setup
 
 ```
 # /etc/nginx/sites-available/groceryflow
@@ -61,13 +48,9 @@ sudo ln -s /etc/nginx/sites-available/groceryflow /etc/nginx/sites-enabled
 sudo systemctl restart nginx
 ```
 
-### Archiving Installed Dependencies
+## Development
 
-```
-pip3 freeze > requirements.txt
-```
-
-### Running development
+### Setting Up Development Environment
 
 ```
 pre-commit install
@@ -75,15 +58,21 @@ source ./venv/bin/activate
 python ./src/main.py
 ```
 
-## Tasks
+### Archiving Installed Dependencies
 
-Go to web:
-- host on a server (left off on deploying this. get ansible command to succeed and then do nginx stuff)
+```
+pip3 freeze > requirements.txt
+```
+
+## Task List
 
 ### User Feedback
 
 For Sharing:
 - agg ingredients by quantity
+  - identify the quantity in the ingredient deck
+  - sum the quantities for each ingredient
+  - render quantity by each ingredient in latex
 - I'd like to more easily be able to add recipes
 - I'd like to more easily validate recipes that were added
   - use gpt for fitting recipes to schema

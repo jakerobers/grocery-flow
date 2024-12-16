@@ -5,3 +5,5 @@ files/print_job.log
 app.log
 src/__pycache__
 keyfile
+files/template.aux
+files/template.log

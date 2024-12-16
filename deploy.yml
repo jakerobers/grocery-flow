@@ -72,25 +72,26 @@
           User=www-data
           Group=www-data
           WorkingDirectory=/var/www/groceryflow
-          Environment="PATH=/var/www/groceryflow/venv/bin"
+          Environment="PATH=/usr/bin:/var/www/groceryflow/venv/bin"
+          Environment="GF_PDFLATEX_EXEC=/usr/bin/pdflatex"
           Environment="PYTHONPATH=/var/www/groceryflow/src"
-          Environment="RECIPE_DIR=/var/www/groceryflow/recipes"
-          Environment="SESSION_KEY={{SESSION_KEY}}"
-          Environment="FILE_GEN_OUTPUT_DIR=/tmp/files"
+          Environment="GF_RECIPE_DIR=/var/www/groceryflow/recipes"
+          Environment="GF_SESSION_KEY={{SESSION_KEY}}"
+          Environment="GF_FILE_GEN_OUTPUT_DIR=/tmp/files"
+          Environment="GF_ENV=production"
           ExecStart=/var/www/groceryflow/venv/bin/gunicorn --workers 1 --bind unix:/var/www/groceryflow/groceryflow.sock -m 007 src.main:app
 
           [Install]
           WantedBy=multi-user.target
-      notify: restart flask app
+
+    - name: restart flask app
+      systemd:
+        name: groceryflow
+        daemon_reload: yes
+        state: restarted
 
     - name: Start Flask app
       systemd:
         name: groceryflow
         state: started
         enabled: true
-
-  handlers:
-    - name: restart flask app
-      systemd:
-        name: groceryflow
-        state: restarted

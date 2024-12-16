@@ -27,11 +27,12 @@ def get_printer_name(logger=None):
         return None
 
 
-def get_recipes(recipe_dir):
+def get_recipes(recipe_dir, logger):
     """Retrieve a list of RecipeMD files from the recipes directory."""
 
     PINNED_RECIPES = ["bean_stuff.md", "mexican_quinoa.md"]
     meal_files = [f for f in os.listdir(recipe_dir) if f.endswith(".md")]
+    logger.info(f"Found files: {str(meal_files)}")
     pinned_meal_files = [x for x in meal_files if x in PINNED_RECIPES]
     unpinned_meal_files = [x for x in meal_files if x not in PINNED_RECIPES]
     meal_files = pinned_meal_files + unpinned_meal_files
@@ -52,7 +53,7 @@ def get_recipes(recipe_dir):
     return meal_names
 
 
-def create_latex_document(template, tex_path, meal_idx, items, logger=None):
+def create_latex_document(template, tex_path, meal_idx, items, logger):
     logger.info("Creating generated-list.tex using template.tex")
 
     meals = []
@@ -65,7 +66,7 @@ def create_latex_document(template, tex_path, meal_idx, items, logger=None):
         f.write(filled_template)
 
 
-def generate_pdf(tex_filepath, logger=None):
+def generate_pdf(tex_filepath, logger):
     logger.info("Generating latex file")
     directory = os.path.dirname(tex_filepath)
     subprocess.run(

@@ -37,7 +37,8 @@ def create_latex_document(template, tex_path, meals, all_ingredients, logger):
     items = []
     for ingredient in all_ingredients:
         tags = ", ".join(ingredient["tags"])
-        items.append(f"{ingredient['name']} ({tags})")
+        quantities = ", ".join(ingredient["quantities"])
+        items.append(f"{ingredient['name']} ({quantities}) ({tags})")
 
     data = {"items": items, "meals": rendered_meals}
     filled_template = template.render(data)
@@ -94,18 +95,27 @@ class MealBuilder:
         all_ingredients = []
         for meal in meals:
             for meal_ingredient in meal["ingredients"]:
+                if meal_ingredient["quantity"]:
+                    quantity = f"{round(meal_ingredient['quantity'], 2)} {meal_ingredient['unit']}"
+                else:
+                    quantity = meal_ingredient["unit"]
+
                 found = False
                 i = 0
                 while not found and i < len(all_ingredients):
                     if all_ingredients[i]["name"] == meal_ingredient["name"]:
                         found = True
                         all_ingredients[i]["tags"].append(meal["short_code"])
-                        # TODO: add the quantities together
+                        all_ingredients[i]["quantities"].append(quantity)
                     i += 1
 
                 if not found:
                     all_ingredients.append(
-                        {"name": meal_ingredient["name"], "tags": [meal["short_code"]]}
+                        {
+                            "name": meal_ingredient["name"],
+                            "tags": [meal["short_code"]],
+                            "quantities": [quantity],
+                        }
                     )
 
         return (meals, all_ingredients)

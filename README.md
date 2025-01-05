@@ -53,8 +53,12 @@ sudo systemctl restart nginx
 ### Setting Up Development Environment
 
 ```
-pre-commit install
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt install python3.13 python3.13-venv
+python3.13 -m venv ./venv
 source ./venv/bin/activate
+pip install -r requirements.txt
+pre-commit install
 python ./src/main.py
 ```
 

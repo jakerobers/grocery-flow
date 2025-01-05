@@ -12,11 +12,11 @@ from flask import (
     redirect,
 )
 from utils import (
-    get_recipes,
     create_latex_document,
     generate_pdf,
     MealBuilder,
 )
+from db import create_db, get_all_recipes, seed_recipes
 
 app = Flask(__name__)
 
@@ -45,7 +45,6 @@ app.config["GF_RECIPE_DIR"] = os.getenv("GF_RECIPE_DIR")
 app.config["GF_PRINTABLE_TEX_TEMPLATE_PATH"] = os.path.join(
     ".", "files", "template.tex"
 )
-app.recipes = get_recipes(app.config["GF_RECIPE_DIR"], app.logger)
 
 
 @app.route("/document_readiness/<doc_id>", methods=["GET"])
@@ -72,9 +71,10 @@ def index():
     if username is None:
         return redirect("/login")
 
+    recipes = get_all_recipes()
     # js_context = {"pending_document": "38aeafca-80e1-4496-b584-354fb5bb07c4"}
     js_context = {}
-    return render_template("index.html", recipes=app.recipes, js_context=js_context)
+    return render_template("index.html", recipes=recipes, js_context=js_context)
 
 
 @app.route("/", methods=["POST"])
@@ -83,23 +83,22 @@ def submit():
     if not username:
         return redirect("/login")
 
-    filename = str(uuid.uuid4())
     selected_items = request.form.getlist("items")
+    all_recipes = get_all_recipes()
+    recipes = [recipe for recipe in all_recipes if str(recipe["id"]) in selected_items]
 
-    meal_fps = [
-        os.path.join(app.config["GF_RECIPE_DIR"], recipe) for recipe in selected_items
-    ]
-    (meal_idx, items) = MealBuilder().select_meals(meal_fps)
+    filename = str(uuid.uuid4())
+    (meals, all_ingredients) = MealBuilder().select_meals(recipes)
 
     tex_path = os.path.join("/tmp", "files", f"{filename}.tex")
     env = Environment(loader=FileSystemLoader("."))
     template = env.get_template(app.config["GF_PRINTABLE_TEX_TEMPLATE_PATH"])
 
-    create_latex_document(template, tex_path, meal_idx, items, app.logger)
+    create_latex_document(template, tex_path, meals, all_ingredients, app.logger)
     pdf_filepath = generate_pdf(tex_path, app.logger)
 
     js_context = {"pending_document": filename}
-    return render_template("index.html", recipes=app.recipes, js_context=js_context)
+    return render_template("index.html", recipes=all_recipes, js_context=js_context)
 
 
 @app.route("/login", methods=["GET"])
@@ -120,4 +119,9 @@ def attempt_login():
 
 
 if __name__ == "__main__":
+    create_db()
+    recipes = get_all_recipes()
+    if len(recipes) == 0:
+        seed_recipes()
+
     app.run()

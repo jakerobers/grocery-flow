@@ -27,40 +27,19 @@ def get_printer_name(logger=None):
         return None
 
 
-def get_recipes(recipe_dir, logger):
-    """Retrieve a list of RecipeMD files from the recipes directory."""
-
-    PINNED_RECIPES = ["bean_stuff.md", "mexican_quinoa.md"]
-    meal_files = [f for f in os.listdir(recipe_dir) if f.endswith(".md")]
-    logger.info(f"Found files: {str(meal_files)}")
-    pinned_meal_files = [x for x in meal_files if x in PINNED_RECIPES]
-    unpinned_meal_files = [x for x in meal_files if x not in PINNED_RECIPES]
-    meal_files = pinned_meal_files + unpinned_meal_files
-
-    meal_names = []
-    for meal_file in meal_files:
-        meal_fp = os.path.join(".", "recipes", meal_file)
-        meal_name = subprocess.run(
-            ["recipemd", meal_fp, "-t"], capture_output=True, text=True
-        ).stdout
-
-        meal_name = meal_name.strip()
-        if meal_file in pinned_meal_files:
-            meal_name = f"^ {meal_name}"
-
-        meal_names.append((meal_file, meal_name))
-
-    return meal_names
-
-
-def create_latex_document(template, tex_path, meal_idx, items, logger):
+def create_latex_document(template, tex_path, meals, all_ingredients, logger):
     logger.info("Creating generated-list.tex using template.tex")
 
-    meals = []
-    for _k, v in meal_idx.items():
-        meals.append(f"({v['short_code']}) {v['title']}")
+    rendered_meals = []
+    for meal in meals:
+        rendered_meals.append(f"({meal['short_code']}) {meal['title']}")
 
-    data = {"items": items, "meals": meals}
+    items = []
+    for ingredient in all_ingredients:
+        tags = ", ".join(ingredient["tags"])
+        items.append(f"{ingredient['name']} ({tags})")
+
+    data = {"items": items, "meals": rendered_meals}
     filled_template = template.render(data)
     with open(tex_path, "w") as f:
         f.write(filled_template)
@@ -82,67 +61,54 @@ def generate_pdf(tex_filepath, logger):
 
 
 class MealBuilder:
-    def __init__(self: Self):
-        pass
-
-    def select_meals(self, meal_fps, logger=None):
+    def select_meals(self, recipes, logger=None):
         """
         meal_fps: A collection of `os.path.join(".", "recipes", ".......")`
         """
 
-        meal_idx = {}
+        meals = []
         letter = 65  # A
-        for meal_fp in meal_fps:
-            meal_name = subprocess.run(
-                ["recipemd", meal_fp, "-t"], capture_output=True, text=True
-            ).stdout
 
-            meal_title = meal_name.replace("\n", "")
-            meal_idx[meal_fp] = {
-                "title": meal_title,
-                "short_code": chr(letter),
-                "ingredients": [],
-            }
-            letter += 1
-
-        ingredients = []
-
-        for meal_fp in meal_fps:
-            meal_ingredients = subprocess.run(
-                ["recipemd", meal_fp, "-i"], capture_output=True, text=True
-            ).stdout
-
-            meal_ingredient_items = meal_ingredients.split("\n")
-
-            for mi in meal_ingredient_items:
-                if re.search(r"^to taste", mi) is not None:
+        for recipe in recipes:
+            recipe_ingredients = []
+            for ingredient in recipe["ingredients"]:
+                if re.search(r"^to taste", ingredient["name"]) is not None:
                     # Don't print out common ingredients like salt pepper, etc.
                     # Can make this configurable in the future if we want.
                     continue
 
-                if self._in_reject_list(mi):
+                if self._in_reject_list(ingredient["name"]):
                     continue
 
-                cleaned_ingredient = re.sub(CLEAN_INGREDIENT_PTN, "", mi).strip()
-                meal_idx[meal_fp]["ingredients"].append(cleaned_ingredient)
-                ingredients.append(cleaned_ingredient)
+                recipe_ingredients.append(ingredient)
 
-        sorted_unique_ingredients = list(sorted(set(ingredients)))
+            meals.append(
+                {
+                    "title": recipe["title"],
+                    "short_code": chr(letter),
+                    "ingredients": recipe_ingredients,
+                }
+            )
+            letter += 1
 
-        # Go through and tag each ingredient to its corresponding meals.
-        # This way when you're looking at the shopping list, you can easily
-        # tell from a glance which ingredient corresponds to which meal(s)
-        tagged_ingredients = []
-        for i in sorted_unique_ingredients:
-            meal_tag = []
+        all_ingredients = []
+        for meal in meals:
+            for meal_ingredient in meal["ingredients"]:
+                found = False
+                i = 0
+                while not found and i < len(all_ingredients):
+                    if all_ingredients[i]["name"] == meal_ingredient["name"]:
+                        found = True
+                        all_ingredients[i]["tags"].append(meal["short_code"])
+                        # TODO: add the quantities together
+                    i += 1
 
-            for _k, v in meal_idx.items():
-                if i in v["ingredients"]:
-                    meal_tag.append(v["short_code"])
+                if not found:
+                    all_ingredients.append(
+                        {"name": meal_ingredient["name"], "tags": [meal["short_code"]]}
+                    )
 
-            tagged_ingredients.append(f"{i} ({','.join(meal_tag)})")
-
-        return (meal_idx, tagged_ingredients)
+        return (meals, all_ingredients)
 
     def _in_reject_list(self, ingredient):
         REJECT_LIST = [r".*water.*"]  # Things to omit from a shopping list

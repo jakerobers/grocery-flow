@@ -15,8 +15,8 @@
         {% for item in recipes %}
           <li>
             <label>
-              <input type="checkbox" name="items" value="{{item[0]}}" />
-              {{item[1]}}
+              <input type="checkbox" name="items" value="{{item["id"]}}" />
+              {{item["title"]}}
             </label>
           </li>
         {% endfor %}

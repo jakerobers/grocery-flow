@@ -7,3 +7,5 @@ src/__pycache__
 keyfile
 files/template.aux
 files/template.log
+**/__pycache__
+recipes.db

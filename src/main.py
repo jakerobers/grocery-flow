@@ -18,6 +18,14 @@ from utils import (
 )
 from db import create_db, get_all_recipes, seed_recipes
 
+
+# Create the DB if it doesn't exist
+create_db()
+recipes = get_all_recipes()
+if len(recipes) == 0:
+    seed_recipes()
+
+
 app = Flask(__name__)
 
 # Load environment variables from the .env file
@@ -119,9 +127,4 @@ def attempt_login():
 
 
 if __name__ == "__main__":
-    create_db()
-    recipes = get_all_recipes()
-    if len(recipes) == 0:
-        seed_recipes()
-
     app.run()
